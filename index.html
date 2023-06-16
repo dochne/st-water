@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>Severn Trent - State of the Reservoirs</title>
+    <script src="https://cdn.jsdelivr.net/npm/sql.js@1.8.0/dist/sql-wasm.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@2.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+
+    <style type="text/css">
+      #reservoirList {
+        margin: 0 auto;
+        text-align: center;
+        margin-bottom: 50px;
+        margin-top: 20px;
+      }
+
+      #chart {
+        height: 100%;
+        margin: 100px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id='reservoirList'></div>
+    <div id='chart'></div>
+
+    <script>
+      const reservoirList = document.getElementById("reservoirList");
+      
+      function ucwords (str) {
+        return (str + '').toLowerCase().replace(/^([a-z])|\s+([a-z])/g, function ($1) {
+            return $1.toUpperCase();
+        });
+      }
+
+      function redirect(reservoir) {
+        window.history.pushState({"reservoir": reservoir}, null, "/" + encodeURIComponent(reservoir));
+        build();
+      }
+
+      async function build() {
+        const db = window.db;
+
+        const reservoirs = db.exec(`
+          SELECT DISTINCT
+            reservoir
+          FROM water_level
+          INNER JOIN date ON (date.id=water_level.date_id)
+          WHERE \`date\`.\`date\` >= "2023-01-01"
+          ORDER BY reservoir ASC
+        `)[0].values.map(data => data[0]);
+
+        if (history.state === null) {
+          const path = decodeURIComponent(window.location.pathname.replace(/^\//, ""));
+          if (reservoirs.includes(path)) {
+            redirect(path);
+            return;
+          }
+
+          redirect(reservoirs[0]);
+          return;
+        }
+
+        const currentReservoir = history.state["reservoir"];
+
+        reservoirList.innerHTML = reservoirs.map(reservoir =>
+          currentReservoir === reservoir ?
+            `<span>${ucwords(reservoir)}</span>` :
+            `<a href='#' onclick="redirect('${reservoir}'); return false;">${ucwords(reservoir)}</a>`
+        ).join(" | "); 
+
+        const waterLevels = db.exec(`
+          SELECT
+            current_storage,
+            max_storage,
+            STRFTIME("%Y-%m-%d", date) as day,
+            STRFTIME("%Y", date) as year
+          FROM
+            water_level
+          INNER JOIN
+            date ON (date.id=water_level.date_id)
+          WHERE
+            reservoir='${currentReservoir}'
+          ORDER BY
+            date ASC
+        `)[0].values.filter((value) => Number.isInteger(value[0]));
+
+        const minYear = Math.min(...waterLevels.map(row => Number(row[3])));
+        const maxYear = Math.max(...waterLevels.map(row => Number(row[3])));
+        const maxStorage = Math.max(...waterLevels.map(row => Number(row[1])));
+
+        const byYear = {};
+        for (let year=minYear; year<=maxYear; year++) {
+          byYear[year] = {
+            "label": year,
+            "data": []
+          }
+        }
+
+        waterLevels.forEach(row => {
+
+          console.log({
+            "x": row[2],
+            "y": row[0]
+          });
+          byYear[row[3]]["data"].push({
+            "x": row[2],
+            "y": row[0]
+          })
+        });
+
+        const chart = document.getElementById("chart");
+        chart.innerHTML = '';
+        let canvas = document.createElement('canvas');
+        canvas.id = 'waterChart';
+        chart.appendChild(canvas);
+
+        // console.log(byYear);
+
+        const ctx = document.getElementById('waterChart');
+
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                datasets: Object.values(byYear)
+            },
+            options: {
+                scales: {
+                    x: {
+                        type: 'time',
+                        time: {
+                            unit: 'week',
+                        }
+                    },
+                    y: {
+                        max: maxStorage,
+                        min: 0
+                    }
+                }
+            }
+        });
+      }
+
+      (async () => {
+          const sqlPromise = initSqlJs({
+            locateFile: file => `https://cdn.jsdelivr.net/npm/sql.js@1.8.0/dist/${file}`
+          });
+
+          const dataPromise = fetch("/database.db").then(res => res.arrayBuffer());
+          const [SQL, buf] = await Promise.all([sqlPromise, dataPromise])
+          window.db = new SQL.Database(new Uint8Array(buf));
+
+          await build();
+      })();
+    </script>
+  </body>
+</html>
