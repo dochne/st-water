@@ -107,3 +107,4 @@ import fs from 'fs/promises'
 
     await browser.close();
 })();
+
