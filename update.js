@@ -18,11 +18,11 @@ import fs from 'fs/promises'
     const runMigrations = [...(await db.all("SELECT filename FROM migrations"))].map((row) => row.filename);
 
     console.log("All", allMigrations, "run", runMigrations);
-    allMigrations.filter((filename) => !runMigrations.includes(filename)).forEach(async (filename) => {
+    for (const filename of allMigrations.filter((filename) => !runMigrations.includes(filename))) {
         console.log(runMigrations, "filename", filename);
         const migrationSql = (await fs.readFile('./migrations/' + filename)).toString();
         await db.exec(`BEGIN; ${migrationSql}; INSERT INTO migrations (filename) VALUES ('${filename}'); COMMIT;`)
-    });
+    }
 
     const browser = await puppeteer.launch();
 
