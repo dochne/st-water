@@ -1,22 +1,25 @@
 name: Create our Weekly Meeting notes issue
-# on:
-#   schedule:
-#     - cron: '0 14 * * 1'
-on: 
+on:
+  schedule:
+    - cron: '0 1 * * *'
   push:
     branches:
-      - doug-cron
+      - main
 
 permissions:
   contents: write
-  
+
 jobs:
   commit:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: "Foo"
-        run: "echo 'Fooo' > foo.txt"
+
+      - name: "NPM Install"
+        run: "npm install"
+
+      - name: "Update"
+        run: "node update.js"
 
       - name: "Git Add"
         run: "git add --all"
@@ -27,10 +30,4 @@ jobs:
       - name: "Push"
         run: git push
 
-      
-
-      # - uses: JasonEtco/create-an-issue@v2
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #   with:
-      #     filename: .github/ISSUE_TEMPLATE/meeting-notes.md
+    
