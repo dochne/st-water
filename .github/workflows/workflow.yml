@@ -1,0 +1,36 @@
+name: Create our Weekly Meeting notes issue
+# on:
+#   schedule:
+#     - cron: '0 14 * * 1'
+on: 
+  push:
+    branches:
+      - doug-cron
+
+permissions:
+  contents: write
+  
+jobs:
+  commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: "Foo"
+        run: "echo 'Fooo' > foo.txt"
+
+      - name: "Git Add"
+        run: "git add --all"
+
+      - name: "Commit"
+        run: git -c user.name="Doug Nelson" -c user.email="water@dochne.com" commit -m "updated database.db"
+
+      - name: "Push"
+        run: git push
+
+      
+
+      # - uses: JasonEtco/create-an-issue@v2
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   with:
+      #     filename: .github/ISSUE_TEMPLATE/meeting-notes.md
