@@ -82,6 +82,9 @@ import fs from 'fs/promises'
             let values = [];
             for (let x=2; x<trs.length; x++) {
                 let tr = trs[x];
+                if (tr.children.length < 5) {
+                    continue;
+                }
                 values.push({
                     reservoir: (tr.children[0].innerText + tr.children[1].innerText).trim(),
                     max_storage: tr.children[2].innerText,
