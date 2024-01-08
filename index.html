@@ -50,7 +50,8 @@
             reservoir
           FROM water_level
           INNER JOIN date ON (date.id=water_level.date_id)
-          WHERE \`date\`.\`date\` >= "2023-01-01"
+          WHERE \`date\`.\`date\` >= "2023-01-01" AND
+          reservoir != ''
           ORDER BY reservoir ASC
         `)[0].values.map(data => data[0]);
 
