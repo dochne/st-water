@@ -2,32 +2,55 @@
 <html lang="en-us">
   <head>
     <meta charset="utf-8">
-    <!-- <meta name="viewport" content="width=device-width, initial-scale=1"> -->
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <title>Severn Trent - State of the Reservoirs</title>
+
+    <link rel="stylesheet" href="https://dochne.com/hugo-theme-console/css/terminal-0.7.2.min.css" />
+    <link rel="stylesheet" href="https://dochne.com/hugo-theme-console/css/animate-4.1.1.min.css" />
+    <link rel="stylesheet" href="https://dochne.com/hugo-theme-console/css/console.css" />
+    <link rel="stylesheet" href="https://dochne.com/css/overrides.css" />
+
     <script src="https://cdn.jsdelivr.net/npm/sql.js@1.8.0/dist/sql-wasm.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@2.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 
     <style type="text/css">
-      #reservoirList {
-        margin: 0 auto;
-        text-align: center;
-        margin-bottom: 50px;
-        margin-top: 20px;
-      }
-
       #chart {
         height: 100%;
-        margin: 100px;
+        /* margin: 20px; */
       }
     </style>
   </head>
-  <body>
-    <div id='reservoirList'></div>
-    <div id='chart'></div>
-
+  <body class="terminal">
+    <div class="container">
+      <div class="terminal-nav">
+        <header class="terminal-logo">
+          <div class="logo terminal-prompt">
+            <a href="https://dochne.com/" class="no-style site-name">dochne.com</a>:~# 
+            <a href="https://dochne.com/projects">projects</a>/<a href="https://dochne.com/projects/reservoirs">severn-trent-reservoirs</a>/</div>
+        </header>
+        <nav class="terminal-menu">
+          <ul vocab="https://schema.org/" typeof="BreadcrumbList">
+              <!-- <li><a href="https://dochne.com/about/" typeof="ListItem">about/</a></li> -->
+              <li><a href="https://dochne.com/posts/" typeof="ListItem">posts/</a></li>
+              <li><a href="https://dochne.com/projects/" typeof="ListItem">projects/</a></li>
+          </ul>
+        </nav>
+      </div>
+    </div>
+    <div class="container sidebar-container">
+      <!-- <div class="container3"> -->
+        <section>
+          <div id='chart'></div>
+        </section>
+        <nav>
+          <ul id='reservoirList' style="margin-top: 0px"></ul>
+        </nav>
+      <!-- </div> -->
+    </div>
+  </div>
     <script>
       const reservoirList = document.getElementById("reservoirList");
       
@@ -45,7 +68,7 @@
       async function build() {
         const db = window.db;
 
-        const reservoirs = db.exec(`
+        const names = db.exec(`
           SELECT DISTINCT
             reservoir
           FROM water_level
@@ -55,6 +78,19 @@
           ORDER BY reservoir ASC
         `)[0].values.map(data => data[0]);
 
+        const slugMap = {};
+        for (const name of names) {
+          slugMap[name.toLowerCase().replace("/", "").replaceAll("  ", " ").replace(" ", "-").replace("including", "")] = name;
+        }
+        
+        const reservoirs = Object.keys(slugMap);
+        reservoirs.sort((a, b) => {
+          if (a === "totals") return -1;
+          if (b === "totals") return 1;
+          return 0;
+        });
+        
+        console.log(slugMap);
         if (history.state === null) {
           const path = decodeURIComponent(window.location.pathname.replace(/^\//, ""));
           if (reservoirs.includes(path)) {
@@ -69,10 +105,8 @@
         const currentReservoir = history.state["reservoir"];
 
         reservoirList.innerHTML = reservoirs.map(reservoir =>
-          currentReservoir === reservoir ?
-            `<span>${ucwords(reservoir)}</span>` :
-            `<a href='#' onclick="redirect('${reservoir}'); return false;">${ucwords(reservoir)}</a>`
-        ).join(" | "); 
+          `<li ${(currentReservoir === reservoir ? "class='active'" : "")}><a href='#' onclick="redirect('${reservoir}'); return false;">${ucwords(slugMap[reservoir])}</a></li>`
+        ).join(""); 
 
         const waterLevels = db.exec(`
           SELECT
@@ -85,7 +119,7 @@
           INNER JOIN
             date ON (date.id=water_level.date_id)
           WHERE
-            reservoir='${currentReservoir}'
+            reservoir='${slugMap[currentReservoir]}'
           ORDER BY
             date ASC
         `)[0].values.filter((value) => Number.isInteger(value[0]));

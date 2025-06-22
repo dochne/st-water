@@ -109,4 +109,7 @@ import fs from 'fs/promises'
     }
 
     await browser.close();
+
+    // Gross, but who cares
+    await db.run(`UPDATE water_level SET reservoir=replace(reservoir, "Including", "") WHERE reservoir LIKE "%including"`)
 })();
